@@ -1,24 +1,29 @@
 import { Request, Response } from 'express';
-import { supabase } from '../config/supabase';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { RegisterRequest, LoginRequest, UsuarioResponse } from '../types';
+import { db } from '../config/database';
+import { RegisterRequest, LoginRequest, UsuarioResponse, Usuario } from '../types';
 
 export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Response): Promise<void> => {
-  const { nome, email, senha } = req.body;
+  const nome = req.body.nome?.trim();
+  const email = req.body.email?.trim().toLowerCase();
+  const senha = req.body.senha;
 
   if (!nome || !email || !senha) {
     res.status(400).json({ success: false, erro: 'Preencha todos os campos' });
     return;
   }
+
   if (senha.length < 6) {
     res.status(400).json({ success: false, erro: 'Senha deve ter no minimo 6 caracteres' });
     return;
   }
+
   if (nome.length < 3) {
     res.status(400).json({ success: false, erro: 'Nome deve ter no minimo 3 caracteres' });
     return;
   }
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     res.status(400).json({ success: false, erro: 'E-mail invalido' });
@@ -26,11 +31,9 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
   }
 
   try {
-    const { data: usuarioExistente } = await supabase
-      .from('usuarios')
-      .select('id')
-      .eq('email', email)
-      .single();
+    const usuarioExistente = db
+      .prepare('SELECT id FROM usuarios WHERE email = ?')
+      .get(email) as { id: number } | undefined;
 
     if (usuarioExistente) {
       res.status(400).json({ success: false, erro: 'E-mail ja cadastrado' });
@@ -38,14 +41,21 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
-    const { data, error } = await supabase
-      .from('usuarios')
-      .insert([{ nome, email, senha_hash: senhaHash }])
-      .select();
+    const insert = db.prepare(`
+      INSERT INTO usuarios (nome, email, senha_hash)
+      VALUES (?, ?, ?)
+    `);
 
-    if (error) throw error;
+    const result = insert.run(nome, email, senhaHash);
+    const usuario = db
+      .prepare('SELECT id, nome, email FROM usuarios WHERE id = ?')
+      .get(result.lastInsertRowid) as Pick<Usuario, 'id' | 'nome' | 'email'> | undefined;
 
-    const usuario = data[0];
+    if (!usuario) {
+      res.status(500).json({ success: false, erro: 'Erro ao registrar usuario' });
+      return;
+    }
+
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email },
       process.env.JWT_SECRET!,
@@ -64,14 +74,20 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
       token,
       user: usuarioResponse
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      res.status(400).json({ success: false, erro: 'E-mail ja cadastrado' });
+      return;
+    }
+
     console.error('Erro ao registrar:', error);
     res.status(500).json({ success: false, erro: 'Erro ao registrar usuario' });
   }
 };
 
 export const login = async (req: Request<{}, {}, LoginRequest>, res: Response): Promise<void> => {
-  const { email, senha } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+  const senha = req.body.senha;
 
   if (!email || !senha) {
     res.status(400).json({ success: false, erro: 'Preencha e-mail e senha' });
@@ -79,13 +95,11 @@ export const login = async (req: Request<{}, {}, LoginRequest>, res: Response): 
   }
 
   try {
-    const { data: usuario, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('email', email)
-      .single();
+    const usuario = db
+      .prepare('SELECT id, nome, email, senha_hash FROM usuarios WHERE email = ?')
+      .get(email) as Usuario | undefined;
 
-    if (error || !usuario) {
+    if (!usuario) {
       res.status(401).json({ success: false, erro: 'E-mail ou senha invalidos' });
       return;
     }
@@ -122,14 +136,13 @@ export const login = async (req: Request<{}, {}, LoginRequest>, res: Response): 
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   const usuarioId = req.usuarioId!;
-  try {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id, nome, email')
-      .eq('id', usuarioId)
-      .single();
 
-    if (error || !data) {
+  try {
+    const data = db
+      .prepare('SELECT id, nome, email FROM usuarios WHERE id = ?')
+      .get(usuarioId) as UsuarioResponse | undefined;
+
+    if (!data) {
       res.status(404).json({ success: false, erro: 'Usuario nao encontrado' });
       return;
     }

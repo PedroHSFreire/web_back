@@ -3,7 +3,7 @@ export interface Usuario {
   nome: string;
   email: string;
   senha_hash: string;
-  created_at: Date;
+  created_at: string;
 }
 
 export interface Tarefa {
@@ -13,7 +13,7 @@ export interface Tarefa {
   categoria: string;
   prioridade: 'Baixa' | 'Média' | 'Alta';
   concluida: boolean;
-  created_at: Date;
+  created_at: string;
 }
 
 export interface TarefaFrontend {

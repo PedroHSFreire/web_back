@@ -1,23 +1,24 @@
 import { Request, Response } from 'express';
-import { supabase } from '../config/supabase';
+import { db, TarefaRow } from '../config/database';
 import { CreateTaskRequest, TarefaFrontend } from '../types';
+
+type TaskRow = Pick<TarefaRow, 'id' | 'titulo' | 'categoria' | 'prioridade' | 'concluida'>;
 
 export const listarTarefas = async (req: Request, res: Response): Promise<void> => {
   const usuarioId = req.usuarioId!;
 
   try {
-    const { data, error } = await supabase
-      .from('tarefas')
-      .select('*')
-      .eq('usuario_id', usuarioId)
-      .order('created_at', { ascending: false });
+    const rows = db.prepare(`
+      SELECT id, titulo, categoria, prioridade, concluida
+      FROM tarefas
+      WHERE usuario_id = ?
+      ORDER BY created_at DESC, id DESC
+    `).all(usuarioId) as TaskRow[];
 
-    if (error) throw error;
-
-    const tarefas: TarefaFrontend[] = (data || []).map(t => ({
+    const tarefas: TarefaFrontend[] = rows.map(t => ({
       id: t.id,
       title: t.titulo,
-      completed: t.concluida,
+      completed: Boolean(t.concluida),
       category: t.categoria,
       priority: t.prioridade as 'Baixa' | 'Média' | 'Alta'
     }));
@@ -31,33 +32,42 @@ export const listarTarefas = async (req: Request, res: Response): Promise<void> 
 
 export const criarTarefa = async (req: Request<{}, {}, CreateTaskRequest>, res: Response): Promise<void> => {
   const usuarioId = req.usuarioId!;
-  const { title, category, priority } = req.body;
+  const titulo = req.body.title?.trim();
+  const categoria = req.body.category?.trim() || 'Geral';
+  const prioridade = req.body.priority || 'Média';
 
-  if (!title || title.trim() === '') {
+  if (!titulo) {
     res.status(400).json({ success: false, erro: 'Título é obrigatório' });
     return;
   }
 
   try {
-    const { data, error } = await supabase
-      .from('tarefas')
-      .insert([{
-        usuario_id: usuarioId,
-        titulo: title.trim(),
-        categoria: category || 'Geral',
-        prioridade: priority || 'Média',
-        concluida: false
-      }])
-      .select();
+    const insert = db.prepare(`
+      INSERT INTO tarefas (usuario_id, titulo, categoria, prioridade, concluida)
+      VALUES (?, ?, ?, ?, 0)
+    `);
 
-    if (error) throw error;
+    const result = insert.run(usuarioId, titulo, categoria, prioridade);
+
+    const data = db
+      .prepare(`
+        SELECT id, titulo, categoria, prioridade, concluida
+        FROM tarefas
+        WHERE id = ?
+      `)
+      .get(result.lastInsertRowid) as TaskRow | undefined;
+
+    if (!data) {
+      res.status(500).json({ success: false, erro: 'Erro ao criar tarefa' });
+      return;
+    }
 
     const novaTarefa: TarefaFrontend = {
-      id: data[0].id,
-      title: data[0].titulo,
-      completed: data[0].concluida,
-      category: data[0].categoria,
-      priority: data[0].prioridade as 'Baixa' | 'Média' | 'Alta'
+      id: data.id,
+      title: data.titulo,
+      completed: Boolean(data.concluida),
+      category: data.categoria,
+      priority: data.prioridade as 'Baixa' | 'Média' | 'Alta'
     };
 
     res.status(201).json({ success: true, task: novaTarefa });
@@ -72,38 +82,38 @@ export const alternarTarefa = async (req: Request, res: Response): Promise<void>
   const usuarioId = req.usuarioId!;
 
   try {
-    const { data: tarefa, error: findError } = await supabase
-      .from('tarefas')
-      .select('concluida')
-      .eq('id', id)
-      .eq('usuario_id', usuarioId)
-      .single();
+    const tarefa = db
+      .prepare('SELECT concluida FROM tarefas WHERE id = ? AND usuario_id = ?')
+      .get(id, usuarioId) as Pick<TarefaRow, 'concluida'> | undefined;
 
-    if (findError || !tarefa) {
+    if (!tarefa) {
       res.status(404).json({ success: false, erro: 'Tarefa não encontrada' });
       return;
     }
 
-    const { error: updateError } = await supabase
-      .from('tarefas')
-      .update({ concluida: !tarefa.concluida })
-      .eq('id', id);
+    db.prepare(`
+      UPDATE tarefas
+      SET concluida = ?
+      WHERE id = ? AND usuario_id = ?
+    `).run(tarefa.concluida ? 0 : 1, id, usuarioId);
 
-    if (updateError) throw updateError;
+    const updated = db
+      .prepare(`
+        SELECT id, titulo, categoria, prioridade, concluida
+        FROM tarefas
+        WHERE id = ? AND usuario_id = ?
+      `)
+      .get(id, usuarioId) as TaskRow | undefined;
 
-    // Buscar tarefa atualizada para retornar no formato frontend
-    const { data: updated, error: fetchError } = await supabase
-      .from('tarefas')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
+    if (!updated) {
+      res.status(404).json({ success: false, erro: 'Tarefa não encontrada' });
+      return;
+    }
 
     const tarefaAtualizada: TarefaFrontend = {
       id: updated.id,
       title: updated.titulo,
-      completed: updated.concluida,
+      completed: Boolean(updated.concluida),
       category: updated.categoria,
       priority: updated.prioridade as 'Baixa' | 'Média' | 'Alta'
     };
@@ -120,13 +130,14 @@ export const excluirTarefa = async (req: Request, res: Response): Promise<void> 
   const usuarioId = req.usuarioId!;
 
   try {
-    const { error } = await supabase
-      .from('tarefas')
-      .delete()
-      .eq('id', id)
-      .eq('usuario_id', usuarioId);
+    const result = db
+      .prepare('DELETE FROM tarefas WHERE id = ? AND usuario_id = ?')
+      .run(id, usuarioId);
 
-    if (error) throw error;
+    if (result.changes === 0) {
+      res.status(404).json({ success: false, erro: 'Tarefa não encontrada' });
+      return;
+    }
 
     res.json({ success: true, mensagem: 'Tarefa excluída' });
   } catch (error) {
