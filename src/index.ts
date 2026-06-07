@@ -4,11 +4,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes';
 import taskRoutes from './routes/taskRoutes';
 
-
-
 const app = express();
-const PORT = process.env.PORT || 3333;
-
 
 app.use(cors());
 app.use(express.json());
@@ -28,6 +24,4 @@ app.use((_req, res) => {
   res.status(404).json({ success: false, erro: 'Rota não encontrada' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
+export default app;
