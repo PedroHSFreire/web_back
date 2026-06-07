@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -12,16 +12,16 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
     return;
   }
   if (senha.length < 6) {
-    res.status(400).json({ success: false, erro: 'Senha deve ter no mínimo 6 caracteres' });
+    res.status(400).json({ success: false, erro: 'Senha deve ter no minimo 6 caracteres' });
     return;
   }
   if (nome.length < 3) {
-    res.status(400).json({ success: false, erro: 'Nome deve ter no mínimo 3 caracteres' });
+    res.status(400).json({ success: false, erro: 'Nome deve ter no minimo 3 caracteres' });
     return;
   }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    res.status(400).json({ success: false, erro: 'E-mail inválido' });
+    res.status(400).json({ success: false, erro: 'E-mail invalido' });
     return;
   }
 
@@ -33,7 +33,7 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
       .single();
 
     if (usuarioExistente) {
-      res.status(400).json({ success: false, erro: 'E-mail já cadastrado' });
+      res.status(400).json({ success: false, erro: 'E-mail ja cadastrado' });
       return;
     }
 
@@ -45,7 +45,7 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
 
     if (error) throw error;
 
-    const usuario = data[0] as any;
+    const usuario = data[0];
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email },
       process.env.JWT_SECRET!,
@@ -60,13 +60,13 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
 
     res.status(201).json({
       success: true,
-      mensagem: 'Usuário criado com sucesso',
+      mensagem: 'Usuario criado com sucesso',
       token,
       user: usuarioResponse
     });
   } catch (error) {
     console.error('Erro ao registrar:', error);
-    res.status(500).json({ success: false, erro: 'Erro ao registrar usuário' });
+    res.status(500).json({ success: false, erro: 'Erro ao registrar usuario' });
   }
 };
 
@@ -86,13 +86,13 @@ export const login = async (req: Request<{}, {}, LoginRequest>, res: Response): 
       .single();
 
     if (error || !usuario) {
-      res.status(401).json({ success: false, erro: 'E-mail ou senha inválidos' });
+      res.status(401).json({ success: false, erro: 'E-mail ou senha invalidos' });
       return;
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
     if (!senhaValida) {
-      res.status(401).json({ success: false, erro: 'E-mail ou senha inválidos' });
+      res.status(401).json({ success: false, erro: 'E-mail ou senha invalidos' });
       return;
     }
 
@@ -120,7 +120,6 @@ export const login = async (req: Request<{}, {}, LoginRequest>, res: Response): 
   }
 };
 
-// NOVA FUNÇÃO: retorna dados do usuário autenticado
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   const usuarioId = req.usuarioId!;
   try {
@@ -131,13 +130,13 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       .single();
 
     if (error || !data) {
-      res.status(404).json({ success: false, erro: 'Usuário não encontrado' });
+      res.status(404).json({ success: false, erro: 'Usuario nao encontrado' });
       return;
     }
 
     res.json({ success: true, user: data });
   } catch (error) {
-    console.error('Erro ao buscar usuário:', error);
+    console.error('Erro ao buscar usuario:', error);
     res.status(500).json({ success: false, erro: 'Erro interno' });
   }
 };
