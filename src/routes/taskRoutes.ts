@@ -4,12 +4,11 @@ import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Todas as rotas de tarefas exigem autenticação
 router.use(authMiddleware);
 
 router.get('/', listarTarefas);
 router.post('/', criarTarefa);
-router.put('/:id/toggle', alternarTarefa);
+router.put('/:id/toggle', alternarTarefa); // <-- agora com /toggle
 router.delete('/:id', excluirTarefa);
 
 export default router;
