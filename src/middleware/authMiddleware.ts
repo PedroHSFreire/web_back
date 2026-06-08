@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthPayload } from '../types';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'bytesave-fallback-secret';
+
 declare global {
     namespace Express {
         interface Request {
@@ -26,7 +28,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
+        const decoded = jwt.verify(token, JWT_SECRET) as AuthPayload;
         req.usuarioId = decoded.id;
         next();
     } catch (error) {
