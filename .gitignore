@@ -10,14 +10,9 @@ dist/
 
 # Banco local e arquivos temporários do SQLite
 data/
-work/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
-
-# Arquivos específicos de deploy na Vercel, não necessários para o backend no Render
-api/
-vercel.json
 
 # Logs e resíduos de execução
 *.log

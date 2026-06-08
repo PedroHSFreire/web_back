@@ -1,11 +1,11 @@
 {
   "name": "back",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "dev": "nodemon --exec tsx src/server.ts",
+    "dev": "nodemon --exec tsx src/index.ts",
     "build": "tsc",
-    "start": "node index.js"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
