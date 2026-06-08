@@ -77,6 +77,58 @@ export const criarTarefa = async (req: Request<{}, {}, CreateTaskRequest>, res: 
   }
 };
 
+export const atualizarTarefa = async (req: Request<{ id: string }, {}, CreateTaskRequest>, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const usuarioId = req.usuarioId!;
+  const titulo = req.body.title?.trim();
+  const categoria = req.body.category?.trim() || 'Geral';
+  const prioridade = req.body.priority || 'Média';
+
+  if (!titulo) {
+    res.status(400).json({ success: false, erro: 'Título é obrigatório' });
+    return;
+  }
+
+  try {
+    const result = db.prepare(`
+      UPDATE tarefas
+      SET titulo = ?, categoria = ?, prioridade = ?
+      WHERE id = ? AND usuario_id = ?
+    `).run(titulo, categoria, prioridade, id, usuarioId);
+
+    if (result.changes === 0) {
+      res.status(404).json({ success: false, erro: 'Tarefa não encontrada' });
+      return;
+    }
+
+    const updated = db
+      .prepare(`
+        SELECT id, titulo, categoria, prioridade, concluida
+        FROM tarefas
+        WHERE id = ? AND usuario_id = ?
+      `)
+      .get(id, usuarioId) as TaskRow | undefined;
+
+    if (!updated) {
+      res.status(404).json({ success: false, erro: 'Tarefa não encontrada' });
+      return;
+    }
+
+    const tarefaAtualizada: TarefaFrontend = {
+      id: updated.id,
+      title: updated.titulo,
+      completed: Boolean(updated.concluida),
+      category: updated.categoria,
+      priority: updated.prioridade as 'Baixa' | 'Média' | 'Alta'
+    };
+
+    res.json({ success: true, task: tarefaAtualizada });
+  } catch (error) {
+    console.error('Erro ao atualizar tarefa:', error);
+    res.status(500).json({ success: false, erro: 'Erro ao atualizar tarefa' });
+  }
+};
+
 export const alternarTarefa = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const usuarioId = req.usuarioId!;
