@@ -8,9 +8,7 @@ const app = express();
 const allowedOrigins = new Set([
   process.env.FRONTEND_ORIGIN,
   'https://web-front-livid.vercel.app',
-  'http://localhost:4200',
-  'http://localhost:3000',
-  'http://localhost:3333'
+  
 ].filter((origin): origin is string => Boolean(origin)));
 
 const corsOptions: cors.CorsOptions = {
