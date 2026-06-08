@@ -10,15 +10,29 @@ const allowedOrigins = new Set(
   [
     process.env.FRONTEND_ORIGIN,
     'https://web-front-livid.vercel.app',
+    'https://web-front-e9247byfv-pedro-eu.vercel.app',
     'http://localhost:4200',
     'http://localhost:3000',
     'http://localhost:3333'
   ].filter((origin): origin is string => Boolean(origin))
 );
 
+const isAllowedOrigin = (origin: string) => {
+  if (allowedOrigins.has(origin)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'https:' && url.hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+};
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) {
+    if (!origin || isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
