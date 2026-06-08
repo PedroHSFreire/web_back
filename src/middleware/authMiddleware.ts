@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/jwt';
 import { AuthPayload } from '../types';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'bytesave-fallback-secret';
 
 declare global {
     namespace Express {

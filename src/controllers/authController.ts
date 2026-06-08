@@ -2,9 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../config/database';
+import { JWT_SECRET } from '../config/jwt';
 import { RegisterRequest, LoginRequest, UsuarioResponse, Usuario } from '../types';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'bytesave-fallback-secret';
 
 export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Response): Promise<void> => {
   const nome = req.body.nome?.trim();
