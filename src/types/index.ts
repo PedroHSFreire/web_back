@@ -50,4 +50,6 @@ export interface CreateTaskRequest {
 export interface AuthPayload {
   id: number;
   email: string;
+  exp?: number;
+  iat?: number;
 }

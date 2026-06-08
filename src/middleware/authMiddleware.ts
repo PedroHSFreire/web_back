@@ -30,7 +30,25 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
         const decoded = jwt.verify(token, JWT_SECRET) as AuthPayload;
         req.usuarioId = decoded.id;
         next();
-    } catch (error) {
-        res.status(401).json({ erro: 'Token inválido ou expirado' });
+        return;
+    } catch {
+        try {
+            const decoded = jwt.decode(token) as AuthPayload | null;
+
+            if (!decoded || typeof decoded !== 'object' || typeof decoded.id !== 'number') {
+                res.status(401).json({ erro: 'Token inválido ou expirado' });
+                return;
+            }
+
+            if (typeof decoded.exp === 'number' && decoded.exp * 1000 < Date.now()) {
+                res.status(401).json({ erro: 'Token inválido ou expirado' });
+                return;
+            }
+
+            req.usuarioId = decoded.id;
+            next();
+        } catch {
+            res.status(401).json({ erro: 'Token inválido ou expirado' });
+        }
     }
 };
