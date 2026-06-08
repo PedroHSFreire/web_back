@@ -2,6 +2,7 @@ services:
   - type: web
     name: back
     runtime: node
+    rootDir: back
     plan: starter
     buildCommand: npm install && npm run build
     startCommand: npm start
