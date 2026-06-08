@@ -2,7 +2,10 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const dbPath = process.env.SQLITE_PATH ?? path.join(process.cwd(), 'data', 'app.sqlite');
+const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+const dbPath =
+  process.env.SQLITE_PATH ??
+  (isVercel ? '/tmp/app.sqlite' : path.join(process.cwd(), 'data', 'app.sqlite'));
 
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
