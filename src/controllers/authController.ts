@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { db } from '../config/database';
 import { RegisterRequest, LoginRequest, UsuarioResponse, Usuario } from '../types';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'bytesave-fallback-secret';
+
 export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Response): Promise<void> => {
   const nome = req.body.nome?.trim();
   const email = req.body.email?.trim().toLowerCase();
@@ -58,7 +60,7 @@ export const registrar = async (req: Request<{}, {}, RegisterRequest>, res: Resp
 
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email },
-      process.env.JWT_SECRET!,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -112,7 +114,7 @@ export const login = async (req: Request<{}, {}, LoginRequest>, res: Response): 
 
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email },
-      process.env.JWT_SECRET!,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
