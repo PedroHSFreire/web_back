@@ -1,5 +1,26 @@
-node_modules
-.env
+# Dependências instaladas localmente
+node_modules/
+
+# Build gerado pelo TypeScript
 dist/
+
+# Variáveis locais e segredos
+.env
+.env.*
+
+# Banco local e arquivos temporários do SQLite
 data/
+work/
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Arquivos específicos de deploy na Vercel, não necessários para o backend no Render
+api/
+vercel.json
+
+# Logs e resíduos de execução
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
